@@ -6,28 +6,18 @@ import { products as initialProducts } from '@/data/products';
 
 export const dynamic = 'force-dynamic';
 
-const VALID_STUDIO_IMAGES = [
-  '/products/product-1.png',
-  '/products/product-2.png',
-  '/products/product-3.png',
-  '/products/abaya-1.png',
-  '/products/abaya-2.png',
-  '/products/abaya-3.png',
-];
-
 function normalizeImage(img?: unknown): string {
   if (!img || typeof img !== 'string') return '/products/product-1.png';
   const trimmed = img.trim();
   if (
-    VALID_STUDIO_IMAGES.includes(trimmed) ||
-    /^\/(products|images)\/[a-zA-Z0-9._-]+\.(png|jpg|jpeg|webp)$/i.test(trimmed) ||
-    trimmed.startsWith('https://res.cloudinary.com/') ||
-    trimmed.startsWith('data:image/')
+    trimmed.startsWith('http://') ||
+    trimmed.startsWith('https://') ||
+    trimmed.startsWith('//') ||
+    trimmed.startsWith('data:image/') ||
+    trimmed.startsWith('/')
   ) {
     return trimmed;
   }
-  if (trimmed.includes('2')) return '/products/product-2.png';
-  if (trimmed.includes('3')) return '/products/product-3.png';
   return '/products/product-1.png';
 }
 
@@ -135,10 +125,16 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const productId =
+    let productId =
       typeof body?.id === 'string' && /^[a-zA-Z0-9_-]{2,40}$/.test(body.id)
         ? body.id
-        : `jm-${Date.now().toString().slice(-4)}`;
+        : `jm-${Date.now()}-${Math.floor(100 + Math.random() * 900)}`;
+
+    // Verify whether this ID is already taken in the database
+    const existing = await ProductModel.exists({ id: productId });
+    if (existing) {
+      productId = `jm-${Date.now()}-${Math.floor(100 + Math.random() * 900)}`;
+    }
 
     const rawGallery =
       Array.isArray(body?.gallery) && body.gallery.length > 0
@@ -184,8 +180,9 @@ export async function POST(req: NextRequest) {
     });
   } catch (error) {
     console.error('POST /api/products error:', error);
+    const detail = error instanceof Error ? error.message : String(error);
     return NextResponse.json(
-      { success: false, message: 'فشل إضافة المنتج' },
+      { success: false, message: `فشل إضافة المنتج: ${detail}` },
       { status: 500 }
     );
   }

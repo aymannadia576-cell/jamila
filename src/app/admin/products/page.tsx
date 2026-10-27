@@ -35,6 +35,8 @@ export default function AdminProductsPage() {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
   const [customSizeInput, setCustomSizeInput] = useState('');
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -82,6 +84,7 @@ export default function AdminProductsPage() {
     });
     setCustomSizeInput('');
     setUploadError('');
+    setSaveError('');
     setEditingProduct(null);
     setIsAddModalOpen(true);
   };
@@ -106,6 +109,7 @@ export default function AdminProductsPage() {
     });
     setCustomSizeInput('');
     setUploadError('');
+    setSaveError('');
     setIsAddModalOpen(true);
   };
 
@@ -152,17 +156,18 @@ export default function AdminProductsPage() {
       if (res.ok && data.success && Array.isArray(data.urls) && data.urls.length > 0) {
         const uploadedUrls = data.urls as string[];
         setFormData((prev) => {
-          const nextGallery = Array.from(new Set([...uploadedUrls, ...prev.gallery]));
+          const userGallery = prev.gallery.filter((img) => !img.startsWith('/products/product-'));
+          const nextGallery = Array.from(new Set([...uploadedUrls, ...userGallery]));
           return {
             ...prev,
             image: uploadedUrls[0],
-            gallery: nextGallery,
+            gallery: nextGallery.length > 0 ? nextGallery : uploadedUrls,
           };
         });
       } else {
         setUploadError(
           data.message ||
-            'فشل رفع الصور إلى الخدمة السحابية. يرجى التحقق من صيغة وحجم الصورة أو إعدادات Cloudinary.'
+            'فشل رفع الصور إلى الخدمة السحابية. يرجى التحقق من إعدادات Cloudinary أو الاتصال.'
         );
       }
     } catch (err) {
@@ -220,8 +225,10 @@ export default function AdminProductsPage() {
     });
   };
 
-  const handleSaveProduct = (e: React.FormEvent) => {
+  const handleSaveProduct = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSaveError('');
+    setIsSaving(true);
     const cleanGallery =
       formData.gallery.length > 0 ? formData.gallery : [formData.image || '/products/product-1.png'];
     const payload: Omit<Product, 'id'> = {
@@ -230,13 +237,27 @@ export default function AdminProductsPage() {
       gallery: cleanGallery,
     };
 
-    if (editingProduct) {
-      updateProduct(editingProduct.id, payload);
-      setEditingProduct(null);
-    } else {
-      addProduct(payload);
+    try {
+      if (editingProduct) {
+        const res = await updateProduct(editingProduct.id, payload);
+        if (!res.success) {
+          setSaveError(res.message || 'فشل تحديث المنتج في قاعدة البيانات');
+          return;
+        }
+        setEditingProduct(null);
+      } else {
+        const res = await addProduct(payload);
+        if (!res.success) {
+          setSaveError(res.message || 'فشل حفظ المنتج في قاعدة البيانات');
+          return;
+        }
+      }
+      setIsAddModalOpen(false);
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : 'حدث خطأ أثناء حفظ المنتج');
+    } finally {
+      setIsSaving(false);
     }
-    setIsAddModalOpen(false);
   };
 
   const handleDelete = (id: string, name: string) => {
@@ -451,6 +472,12 @@ export default function AdminProductsPage() {
             </div>
 
             <form onSubmit={handleSaveProduct} className="p-5 space-y-4 text-xs max-h-[78vh] overflow-y-auto">
+              {saveError && (
+                <div className="p-3 bg-red-100 border border-red-300 text-red-900 text-xs font-semibold rounded-xs flex items-center gap-2">
+                  <AlertCircle size={16} className="shrink-0 text-red-700" />
+                  <span>{saveError}</span>
+                </div>
+              )}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-[#3d2a1f] font-semibold mb-1">
@@ -779,10 +806,19 @@ export default function AdminProductsPage() {
                 </button>
                 <button
                   type="submit"
-                  disabled={isUploading}
-                  className="px-5 py-2 bg-[#5c3d2e] text-[#f8f2e7] text-xs font-semibold rounded-xs hover:bg-[#3d2a1f] transition-colors shadow-2xs cursor-pointer disabled:opacity-60"
+                  disabled={isUploading || isSaving}
+                  className="px-5 py-2 bg-[#5c3d2e] text-[#f8f2e7] text-xs font-semibold rounded-xs hover:bg-[#3d2a1f] transition-colors shadow-2xs cursor-pointer disabled:opacity-60 flex items-center gap-1.5"
                 >
-                  {editingProduct ? 'حفظ التعديلات' : 'إضافة المنتج للمتجر'}
+                  {isSaving ? (
+                    <>
+                      <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      <span>جاري الحفظ في قاعدة البيانات...</span>
+                    </>
+                  ) : editingProduct ? (
+                    'حفظ التعديلات'
+                  ) : (
+                    'إضافة المنتج للمتجر'
+                  )}
                 </button>
               </div>
             </form>

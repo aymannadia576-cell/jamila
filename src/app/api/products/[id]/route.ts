@@ -5,28 +5,18 @@ import ProductModel, { IProduct } from '@/models/Product';
 
 export const dynamic = 'force-dynamic';
 
-const VALID_STUDIO_IMAGES = [
-  '/products/product-1.png',
-  '/products/product-2.png',
-  '/products/product-3.png',
-  '/products/abaya-1.png',
-  '/products/abaya-2.png',
-  '/products/abaya-3.png',
-];
-
 function normalizeImage(img?: unknown): string {
   if (!img || typeof img !== 'string') return '/products/product-1.png';
   const trimmed = img.trim();
   if (
-    VALID_STUDIO_IMAGES.includes(trimmed) ||
-    /^\/(products|images)\/[a-zA-Z0-9._-]+\.(png|jpg|jpeg|webp)$/i.test(trimmed) ||
-    trimmed.startsWith('https://res.cloudinary.com/') ||
-    trimmed.startsWith('data:image/')
+    trimmed.startsWith('http://') ||
+    trimmed.startsWith('https://') ||
+    trimmed.startsWith('//') ||
+    trimmed.startsWith('data:image/') ||
+    trimmed.startsWith('/')
   ) {
     return trimmed;
   }
-  if (trimmed.includes('2')) return '/products/product-2.png';
-  if (trimmed.includes('3')) return '/products/product-3.png';
   return '/products/product-1.png';
 }
 

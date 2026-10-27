@@ -6,38 +6,100 @@ import { requireAdmin } from '@/lib/auth';
 export const dynamic = 'force-dynamic';
 
 const MAX_FILES_PER_REQUEST = 6;
-const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024; // 5 MB per file
-const ALLOWED_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
-const ALLOWED_SHARP_FORMATS = new Set(['jpeg', 'png', 'webp']);
+const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024; // 10 MB per file
+const ALLOWED_MIME_TYPES = new Set([
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'image/avif',
+  'image/heic',
+  'image/heif',
+]);
+const ALLOWED_SHARP_FORMATS = new Set(['jpeg', 'png', 'webp', 'avif', 'heif']);
 
-function getCloudinaryConfig() {
-  const cloudName = process.env.CLOUDINARY_CLOUD_NAME?.trim();
-  const apiKey = process.env.CLOUDINARY_API_KEY?.trim();
-  const apiSecret = process.env.CLOUDINARY_API_SECRET?.trim();
-  if (!cloudName || !apiKey || !apiSecret) {
+function cleanEnvValue(val?: string): string {
+  if (!val) return '';
+  return val.trim().replace(/^["']|["']$/g, '').trim();
+}
+
+interface CloudinaryConfig {
+  cloudName: string;
+  apiKey?: string;
+  apiSecret?: string;
+  uploadPreset?: string;
+}
+
+function getCloudinaryConfig(): CloudinaryConfig | null {
+  let cloudName = cleanEnvValue(
+    process.env.CLOUDINARY_CLOUD_NAME ||
+    process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME ||
+    process.env.CLOUDINARY_NAME
+  );
+  let apiKey = cleanEnvValue(
+    process.env.CLOUDINARY_API_KEY ||
+    process.env.NEXT_PUBLIC_CLOUDINARY_API_KEY
+  );
+  let apiSecret = cleanEnvValue(
+    process.env.CLOUDINARY_API_SECRET ||
+    process.env.CLOUDINARY_SECRET
+  );
+  const uploadPreset = cleanEnvValue(
+    process.env.CLOUDINARY_UPLOAD_PRESET ||
+    process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET
+  );
+
+  // If individual variables are missing, attempt to parse CLOUDINARY_URL
+  // Standard format: cloudinary://<api_key>:<api_secret>@<cloud_name>
+  const cloudinaryUrl = cleanEnvValue(process.env.CLOUDINARY_URL);
+  if ((!cloudName || !apiKey || !apiSecret) && cloudinaryUrl) {
+    try {
+      const match = cloudinaryUrl.match(/^cloudinary:\/\/([^:]+):([^@]+)@(.+)$/);
+      if (match) {
+        apiKey = apiKey || match[1];
+        apiSecret = apiSecret || match[2];
+        cloudName = cloudName || match[3].split('/')[0];
+      }
+    } catch (e) {
+      console.warn('Could not parse CLOUDINARY_URL:', e);
+    }
+  }
+
+  // Must have a cloud name and either (apiKey + apiSecret) or uploadPreset
+  if (!cloudName || ((!apiKey || !apiSecret) && !uploadPreset)) {
     return null;
   }
-  return { cloudName, apiKey, apiSecret };
+
+  return { cloudName, apiKey, apiSecret, uploadPreset };
 }
 
 async function uploadToCloudinary(
-  dataUri: string,
-  config: { cloudName: string; apiKey: string; apiSecret: string }
+  webpBuffer: Buffer,
+  config: CloudinaryConfig
 ): Promise<string> {
+  const form = new FormData();
+  const blob = new Blob([new Uint8Array(webpBuffer)], { type: 'image/webp' });
+  form.append('file', blob, 'product.webp');
+
   const timestamp = Math.floor(Date.now() / 1000).toString();
   const folder = 'jamila/products';
-  const paramsToSign = `folder=${folder}&timestamp=${timestamp}${config.apiSecret}`;
-  const signature = crypto.createHash('sha1').update(paramsToSign).digest('hex');
 
-  const form = new FormData();
-  form.append('file', dataUri);
-  form.append('api_key', config.apiKey);
-  form.append('timestamp', timestamp);
-  form.append('folder', folder);
-  form.append('signature', signature);
+  if (config.uploadPreset) {
+    form.append('upload_preset', config.uploadPreset);
+  }
+
+  if (config.apiKey && config.apiSecret) {
+    // Cloudinary signature parameters must be sorted alphabetically: folder, timestamp
+    const paramsToSign = `folder=${folder}&timestamp=${timestamp}${config.apiSecret}`;
+    const signature = crypto.createHash('sha1').update(paramsToSign).digest('hex');
+
+    form.append('api_key', config.apiKey);
+    form.append('timestamp', timestamp);
+    form.append('folder', folder);
+    form.append('signature', signature);
+  }
 
   const res = await fetch(
-    `https://api.cloudinary.com/v1_1/${config.cloudName}/image/upload`,
+    `https://api.cloudinary.com/v1_1/${encodeURIComponent(config.cloudName)}/image/upload`,
     {
       method: 'POST',
       body: form,
@@ -45,15 +107,30 @@ async function uploadToCloudinary(
   );
 
   if (!res.ok) {
-    throw new Error(`Cloudinary upload failed with status ${res.status}`);
+    const errorJson = (await res.json().catch(() => null)) as {
+      error?: { message?: string };
+    } | null;
+    const errorMsg =
+      errorJson?.error?.message ||
+      (await res.text().catch(() => '')) ||
+      `HTTP status ${res.status}`;
+    console.error('Cloudinary API upload error details:', res.status, errorMsg);
+    throw new Error(`Cloudinary (${res.status}): ${errorMsg}`);
   }
 
-  const data = (await res.json()) as { secure_url?: unknown };
-  if (typeof data?.secure_url !== 'string' || !data.secure_url) {
-    throw new Error('Cloudinary response did not include a valid secure_url');
+  const data = (await res.json()) as { secure_url?: unknown; url?: unknown };
+  const secureUrl =
+    typeof data?.secure_url === 'string' && data.secure_url
+      ? data.secure_url
+      : typeof data?.url === 'string' && data.url
+      ? data.url
+      : null;
+
+  if (!secureUrl) {
+    throw new Error('Cloudinary response did not include a valid image URL');
   }
 
-  return data.secure_url;
+  return secureUrl;
 }
 
 export async function POST(req: NextRequest) {
@@ -64,13 +141,13 @@ export async function POST(req: NextRequest) {
     process.env.NODE_ENV === 'production' || process.env.VERCEL === '1';
   const cloudinaryConfig = getCloudinaryConfig();
 
-  // In production / Vercel, Cloudinary MUST be configured — never fall back to Base64 in MongoDB.
+  // In production / Vercel, Cloudinary MUST be configured — never fall back to local/Base64.
   if (isProduction && !cloudinaryConfig) {
     return NextResponse.json(
       {
         success: false,
         message:
-          'خدمة رفع الصور السحابية (Cloudinary) غير مهيأة في بيئة الإنتاج. يرجى ضبط متغيرات البيئة الخاصة بـ Cloudinary.',
+          'خدمة Cloudinary غير مهيأة في بيئة Vercel. يرجى إضافة CLOUDINARY_CLOUD_NAME و CLOUDINARY_API_KEY و CLOUDINARY_API_SECRET (أو CLOUDINARY_URL) في إعدادات البيئة بـ Vercel.',
       },
       { status: 503 }
     );
@@ -109,7 +186,7 @@ export async function POST(req: NextRequest) {
           {
             success: false,
             message:
-              'صيغة الملف غير مدعومة، يرجى رفع صور بصيغة JPG أو PNG أو WebP فقط',
+              'صيغة الملف غير مدعومة، يرجى رفع صور بصيغة JPG أو PNG أو WebP أو AVIF فقط',
           },
           { status: 400 }
         );
@@ -120,7 +197,7 @@ export async function POST(req: NextRequest) {
           {
             success: false,
             message:
-              'حجم الصورة يتجاوز الحد المسموح (٥ ميجابايت كحد أقصى لكل صورة)',
+              'حجم الصورة يتجاوز الحد المسموح (١٠ ميجابايت كحد أقصى لكل صورة)',
           },
           { status: 400 }
         );
@@ -129,7 +206,7 @@ export async function POST(req: NextRequest) {
       const arrayBuffer = await file.arrayBuffer();
       const buffer = Buffer.from(arrayBuffer);
 
-      // Verify actual image header & dimensions using sharp
+      // Verify image header & dimensions using sharp
       const metadata = await sharp(buffer)
         .metadata()
         .catch(() => null);
@@ -139,8 +216,8 @@ export async function POST(req: NextRequest) {
         !ALLOWED_SHARP_FORMATS.has(metadata.format) ||
         !metadata.width ||
         !metadata.height ||
-        metadata.width > 8000 ||
-        metadata.height > 8000
+        metadata.width > 9000 ||
+        metadata.height > 9000
       ) {
         return NextResponse.json(
           { success: false, message: 'ملف الصورة غير صالح أو تالف' },
@@ -148,20 +225,20 @@ export async function POST(req: NextRequest) {
         );
       }
 
+      // Optimize and resize image to WebP with sensible resolution
       const webpBuffer = await sharp(buffer)
         .rotate()
-        .resize({ width: 1000, withoutEnlargement: true })
-        .webp({ quality: 82 })
+        .resize({ width: 1200, withoutEnlargement: true })
+        .webp({ quality: 84 })
         .toBuffer();
 
-      const dataUrl = `data:image/webp;base64,${webpBuffer.toString('base64')}`;
-
       if (cloudinaryConfig) {
-        // When Cloudinary is configured (and always in production), upload to Cloudinary or fail with 502/500
-        const cloudinaryUrl = await uploadToCloudinary(dataUrl, cloudinaryConfig);
+        // Upload binary buffer directly to Cloudinary
+        const cloudinaryUrl = await uploadToCloudinary(webpBuffer, cloudinaryConfig);
         urls.push(cloudinaryUrl);
       } else {
-        // Local development fallback only (when NODE_ENV !== 'production' and Cloudinary is not configured)
+        // Development fallback only
+        const dataUrl = `data:image/webp;base64,${webpBuffer.toString('base64')}`;
         urls.push(dataUrl);
       }
     }
@@ -172,11 +249,12 @@ export async function POST(req: NextRequest) {
       urls,
     });
   } catch (error) {
-    console.error('Upload error:', error);
+    console.error('Upload error in POST /api/upload:', error);
+    const detail = error instanceof Error ? error.message : String(error);
     return NextResponse.json(
       {
         success: false,
-        message: 'فشل رفع الصور إلى الخدمة السحابية، يرجى المحاولة مرة أخرى',
+        message: `فشل رفع الصور إلى الخدمة السحابية: ${detail}`,
       },
       { status: 500 }
     );

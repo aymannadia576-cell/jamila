@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { Product, products as initialProducts } from '@/data/products';
 
 export interface CartItem {
@@ -136,6 +136,7 @@ const ShopContext = createContext<ShopContextType | undefined>(undefined);
 
 export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const router = useRouter();
+  const pathname = usePathname();
   const [products, setProducts] = useState<Product[]>(initialProducts);
   const [zones, setZones] = useState<ShippingZoneInfo[]>(DEFAULT_ZONES);
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -232,6 +233,27 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }, 0);
     return () => clearTimeout(timer);
   }, [fetchProducts, fetchZones, fetchCurrentUser]);
+
+  // Synchronize storefront products whenever an admin event occurs
+  useEffect(() => {
+    const handleSync = () => {
+      void fetchProducts();
+    };
+    if (typeof window !== 'undefined') {
+      window.addEventListener('jamila:product-sync', handleSync);
+      return () => window.removeEventListener('jamila:product-sync', handleSync);
+    }
+  }, [fetchProducts]);
+
+  // Re-fetch products when navigating into storefront pages
+  useEffect(() => {
+    if (pathname && !pathname.startsWith('/admin')) {
+      const timer = setTimeout(() => {
+        void fetchProducts();
+      }, 0);
+      return () => clearTimeout(timer);
+    }
+  }, [pathname, fetchProducts]);
 
   useEffect(() => {
     if (!user?.email) return;

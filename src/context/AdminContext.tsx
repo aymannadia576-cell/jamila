@@ -69,9 +69,14 @@ interface AdminContextType {
   adminProfile: AdminProfile;
   settings: StoreSettings;
   isLoadingData: boolean;
-  addProduct: (newProduct: Omit<Product, 'id'>) => Promise<void>;
-  updateProduct: (id: string, updated: Partial<Product>) => Promise<void>;
-  deleteProduct: (id: string) => Promise<void>;
+  addProduct: (
+    newProduct: Omit<Product, 'id'>
+  ) => Promise<{ success: boolean; message?: string; product?: Product }>;
+  updateProduct: (
+    id: string,
+    updated: Partial<Product>
+  ) => Promise<{ success: boolean; message?: string; product?: Product }>;
+  deleteProduct: (id: string) => Promise<boolean>;
   toggleBestSeller: (id: string) => Promise<void>;
   updateOrderStatus: (orderId: string, status: Order['status']) => Promise<void>;
   deleteOrder: (orderId: string) => Promise<void>;
@@ -410,8 +415,10 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return () => clearTimeout(timer);
   }, [refreshData]);
 
-  const addProduct = async (newProductData: Omit<Product, 'id'>) => {
-    const newId = `jm-${Date.now().toString().slice(-4)}`;
+  const addProduct = async (
+    newProductData: Omit<Product, 'id'>
+  ): Promise<{ success: boolean; message?: string; product?: Product }> => {
+    const newId = `jm-${Date.now()}-${Math.floor(100 + Math.random() * 900)}`;
     const gallery = Array.from(
       new Set([newProductData.image, ...(newProductData.gallery || [])].filter(Boolean))
     );
@@ -430,17 +437,30 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       });
       const data = await res.json();
       if (res.ok && data.success && data.product) {
-        setProductsList((prev) => [data.product as Product, ...prev]);
-        return;
+        const savedProduct = data.product as Product;
+        setProductsList((prev) => [savedProduct, ...prev.filter((p) => p.id !== savedProduct.id)]);
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('jamila:product-sync'));
+        }
+        return { success: true, product: savedProduct };
       }
+      return {
+        success: false,
+        message: data.message || 'فشل حفظ المنتج في قاعدة البيانات',
+      };
     } catch (error) {
       console.error('Error adding product to MongoDB:', error);
+      return {
+        success: false,
+        message: 'حدث خطأ في الاتصال بالخادم أثناء إضافة المنتج',
+      };
     }
-    setProductsList((prev) => [created, ...prev]);
   };
 
-  const updateProduct = async (id: string, updated: Partial<Product>) => {
-    setProductsList((prev) => prev.map((p) => (p.id === id ? { ...p, ...updated } : p)));
+  const updateProduct = async (
+    id: string,
+    updated: Partial<Product>
+  ): Promise<{ success: boolean; message?: string; product?: Product }> => {
     try {
       const res = await fetch(`/api/products/${id}`, {
         method: 'PUT',
@@ -449,21 +469,42 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       });
       const data = await res.json();
       if (res.ok && data.success && data.product) {
+        const savedProduct = data.product as Product;
         setProductsList((prev) =>
-          prev.map((p) => (p.id === id ? (data.product as Product) : p))
+          prev.map((p) => (p.id === id ? savedProduct : p))
         );
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('jamila:product-sync'));
+        }
+        return { success: true, product: savedProduct };
       }
+      return {
+        success: false,
+        message: data.message || 'فشل تحديث المنتج في قاعدة البيانات',
+      };
     } catch (error) {
       console.error('Error updating product in MongoDB:', error);
+      return {
+        success: false,
+        message: 'حدث خطأ في الاتصال بالخادم أثناء تحديث المنتج',
+      };
     }
   };
 
-  const deleteProduct = async (id: string) => {
-    setProductsList((prev) => prev.filter((p) => p.id !== id));
+  const deleteProduct = async (id: string): Promise<boolean> => {
     try {
-      await fetch(`/api/products/${id}`, { method: 'DELETE' });
+      const res = await fetch(`/api/products/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        setProductsList((prev) => prev.filter((p) => p.id !== id));
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('jamila:product-sync'));
+        }
+        return true;
+      }
+      return false;
     } catch (error) {
       console.error('Error deleting product from MongoDB:', error);
+      return false;
     }
   };
 
