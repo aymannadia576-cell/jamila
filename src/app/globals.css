@@ -1,26 +1,120 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
+@layer base {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --cream: #f8f2e7;
+    --cream-soft: #fcfaf5;
+    --white: #ffffff;
+    --brown-deep: #3d2a1f;
+    --brown: #5c3d2e;
+    --brown-soft: #8a6b57;
+    --hairline: rgba(92, 61, 46, 0.16);
+  }
+
+  html {
+    direction: rtl;
+    background-color: var(--cream);
+    color: var(--brown-deep);
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background-color: var(--cream);
+    color: var(--brown-deep);
+    font-family: var(--font-cairo), system-ui, sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Typography */
+  .font-playfair {
+    font-family: var(--font-playfair), serif;
+  }
+
+  .font-amiri {
+    font-family: var(--font-amiri), serif;
+  }
+
+  .font-cairo {
+    font-family: var(--font-cairo), sans-serif;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* Clean, Invisible Luxury Scrollbar (No intrusive side scrollbar) */
+::-webkit-scrollbar {
+  display: none;
+  width: 0px;
+  height: 0px;
+}
+
+html, body {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
+/* Animations */
+@keyframes archStrokeDraw {
+  0% {
+    stroke-dashoffset: 1200;
+  }
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInFromStart {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideInFromEnd {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+.animate-arch-stroke {
+  stroke-dasharray: 1200;
+  stroke-dashoffset: 1200;
+  animation: archStrokeDraw 2.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Respect prefers-reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+  .animate-arch-stroke {
+    stroke-dashoffset: 0 !important;
+    animation: none !important;
+  }
+  .animate-fade-in {
+    animation: none !important;
+    transform: none !important;
+  }
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

@@ -1,0 +1,55 @@
+import React from 'react';
+
+interface JamilaVectorLogoProps {
+  color?: string;
+  className?: string;
+  height?: number | string;
+}
+
+export const JamilaVectorLogo: React.FC<JamilaVectorLogoProps> = ({
+  color = '#5c3d2e',
+  className = '',
+  height = 56,
+}) => {
+  return (
+    <svg
+      viewBox="0 0 200 130"
+      height={height}
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className={`object-contain ${className}`}
+      aria-label="JAMILA Logo"
+    >
+      {/* 100% Transparent Background - ZERO White Box */}
+
+      {/* Primary Left Serif 'J' with Ball Terminal */}
+      {/* Top Crossbar Serif */}
+      <path
+        d="M 68 18 L 102 18 L 102 23 L 90 23 L 90 64 C 90 77 82 86 68 86 C 54 86 45 78 45 68 C 45 59 52 54 60 54 C 65 54 69 57 70 61 C 70 65 67 69 63 69 C 60 69 58 67 58 65 C 58 62 61 61 63 61 C 60 61 57 64 57 68 C 57 74 61 79 68 79 C 76 79 81 72 81 63 L 81 23 L 68 23 Z"
+        fill={color}
+      />
+
+      {/* Secondary Nested Right 'J' Stem */}
+      <path
+        d="M 104 18 L 126 18 L 126 23 L 117 23 L 117 62 C 117 72 112 79 104 82 L 100 76 C 105 74 108 70 108 63 L 108 23 L 104 23 Z"
+        fill={color}
+      />
+
+      {/* Elegant Serif "JAMILA" Capital Wordmark */}
+      <text
+        x="100"
+        y="114"
+        textAnchor="middle"
+        fill={color}
+        style={{
+          fontFamily: "'Playfair Display', 'Cinzel', serif",
+          fontSize: '21px',
+          fontWeight: 600,
+          letterSpacing: '0.32em',
+        }}
+      >
+        JAMILA
+      </text>
+    </svg>
+  );
+};
