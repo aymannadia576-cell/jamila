@@ -54,20 +54,23 @@ export async function PATCH(
       for (const item of existingOrder.items || []) {
         if (!item.productId || item.quantity <= 0) continue;
 
+        // Ensure legacy products without a numeric stock field are initialized to 10 once
+        await ProductModel.updateOne(
+          {
+            id: item.productId,
+            $or: [{ stock: { $exists: false } }, { stock: null }],
+          },
+          { $set: { stock: 10 } }
+        );
+
         const updatedProduct = await ProductModel.findOneAndUpdate(
           {
             id: item.productId,
-            $or: [{ stock: { $gte: item.quantity } }, { stock: { $exists: false } }],
+            stock: { $gte: item.quantity },
           },
-          [
-            {
-              $set: {
-                stock: {
-                  $max: [0, { $subtract: [{ $ifNull: ['$stock', 10] }, item.quantity] }],
-                },
-              },
-            },
-          ],
+          {
+            $inc: { stock: -item.quantity },
+          },
           { new: true }
         );
 

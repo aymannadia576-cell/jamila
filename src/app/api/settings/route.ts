@@ -5,25 +5,53 @@ import SettingModel from '@/models/Setting';
 
 export const dynamic = 'force-dynamic';
 
+const DEFAULT_STORE_SETTINGS = {
+  key: 'store_settings',
+  freeShippingThreshold: 4000,
+  standardDeliveryFee: 65,
+  announcementText:
+    'توصيل سريع لكافة محافظات مصر | شحن مجاني للطلبات فوق ٤,٠٠٠ ج.م',
+  isCodEnabled: true,
+  isInstaPayEnabled: true,
+  isCardEnabled: true,
+};
+
+function isDuplicateKeyError(err: unknown): boolean {
+  return (
+    typeof err === 'object' &&
+    err !== null &&
+    'code' in err &&
+    (err as { code?: number }).code === 11000
+  );
+}
+
 export async function GET() {
   try {
     await connectToDatabase();
     let settings = await SettingModel.findOne({ key: 'store_settings' });
 
     if (!settings) {
-      settings = await SettingModel.create({
-        key: 'store_settings',
-        freeShippingThreshold: 4000,
-        standardDeliveryFee: 65,
-        announcementText:
-          'توصيل سريع لكافة محافظات مصر | شحن مجاني للطلبات فوق ٤,٠٠٠ ج.م',
-        isCodEnabled: true,
-        isInstaPayEnabled: true,
-        isCardEnabled: true,
-      });
+      try {
+        settings = await SettingModel.findOneAndUpdate(
+          { key: 'store_settings' },
+          { $setOnInsert: DEFAULT_STORE_SETTINGS },
+          { new: true, upsert: true, setDefaultsOnInsert: true }
+        );
+      } catch (err: unknown) {
+        if (isDuplicateKeyError(err)) {
+          settings =
+            (await SettingModel.findOne({ key: 'store_settings' })) ||
+            (await SettingModel.findOne({}));
+        } else {
+          throw err;
+        }
+      }
     }
 
-    return NextResponse.json({ success: true, settings });
+    return NextResponse.json({
+      success: true,
+      settings: settings || DEFAULT_STORE_SETTINGS,
+    });
   } catch (error) {
     console.error('GET /api/settings error:', error);
     return NextResponse.json(
@@ -69,11 +97,27 @@ export async function PUT(req: NextRequest) {
       allowedUpdates.isCardEnabled = body.isCardEnabled;
     }
 
-    const updated = await SettingModel.findOneAndUpdate(
-      { key: 'store_settings' },
-      { $set: allowedUpdates },
-      { new: true, upsert: true }
-    );
+    let updated;
+    try {
+      updated = await SettingModel.findOneAndUpdate(
+        { key: 'store_settings' },
+        {
+          $set: allowedUpdates,
+          $setOnInsert: { key: 'store_settings' },
+        },
+        { new: true, upsert: true, setDefaultsOnInsert: true }
+      );
+    } catch (err: unknown) {
+      if (isDuplicateKeyError(err)) {
+        updated = await SettingModel.findOneAndUpdate(
+          { key: 'store_settings' },
+          { $set: allowedUpdates },
+          { new: true }
+        );
+      } else {
+        throw err;
+      }
+    }
 
     return NextResponse.json({
       success: true,

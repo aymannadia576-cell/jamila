@@ -116,19 +116,29 @@ export async function POST(req: NextRequest) {
       ]);
     }
 
-    // 4. Seed Store Settings if empty
-    const existingSettings = await SettingModel.findOne({ key: 'store_settings' });
-    if (!existingSettings) {
-      await SettingModel.create({
-        key: 'store_settings',
-        freeShippingThreshold: 4000,
-        standardDeliveryFee: 65,
-        announcementText:
-          'توصيل سريع لكافة محافظات مصر | شحن مجاني للطلبات فوق ٤,٠٠٠ ج.م',
-        isCodEnabled: true,
-        isInstaPayEnabled: true,
-        isCardEnabled: true,
-      });
+    // 4. Seed Store Settings if empty (using atomic upsert to avoid E11000 duplicate key errors)
+    try {
+      await SettingModel.findOneAndUpdate(
+        { key: 'store_settings' },
+        {
+          $setOnInsert: {
+            key: 'store_settings',
+            freeShippingThreshold: 4000,
+            standardDeliveryFee: 65,
+            announcementText:
+              'توصيل سريع لكافة محافظات مصر | شحن مجاني للطلبات فوق ٤,٠٠٠ ج.م',
+            isCodEnabled: true,
+            isInstaPayEnabled: true,
+            isCardEnabled: true,
+          },
+        },
+        { new: true, upsert: true, setDefaultsOnInsert: true }
+      );
+    } catch (err: unknown) {
+      const code = (err as { code?: number })?.code;
+      if (code !== 11000) {
+        throw err;
+      }
     }
 
     return NextResponse.json({

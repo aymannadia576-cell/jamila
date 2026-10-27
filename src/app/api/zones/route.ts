@@ -62,7 +62,14 @@ export async function GET() {
     let zones = await ZoneModel.find({}).sort({ shippingFee: 1 });
 
     if (!zones || zones.length === 0) {
-      await ZoneModel.insertMany(initialEgyptianZones);
+      try {
+        await ZoneModel.insertMany(initialEgyptianZones, { ordered: false });
+      } catch (seedErr: unknown) {
+        const code = (seedErr as { code?: number })?.code;
+        if (code !== 11000) {
+          console.warn('Initial zones seed warning in GET /api/zones:', seedErr);
+        }
+      }
       zones = await ZoneModel.find({}).sort({ shippingFee: 1 });
     }
 

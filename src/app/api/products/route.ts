@@ -91,7 +91,14 @@ export async function GET() {
     let docs = await ProductModel.find({}).sort({ createdAt: -1 });
 
     if (!docs || docs.length === 0) {
-      await ProductModel.insertMany(initialProducts);
+      try {
+        await ProductModel.insertMany(initialProducts, { ordered: false });
+      } catch (seedErr: unknown) {
+        const code = (seedErr as { code?: number })?.code;
+        if (code !== 11000) {
+          console.warn('Initial products seed warning in GET /api/products:', seedErr);
+        }
+      }
       docs = await ProductModel.find({}).sort({ createdAt: -1 });
     }
 

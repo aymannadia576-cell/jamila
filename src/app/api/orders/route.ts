@@ -100,7 +100,14 @@ export async function POST(req: NextRequest) {
     // Ensure products collection is seeded if empty
     const prodCount = await ProductModel.countDocuments();
     if (prodCount === 0) {
-      await ProductModel.insertMany(initialProducts);
+      try {
+        await ProductModel.insertMany(initialProducts, { ordered: false });
+      } catch (seedErr: unknown) {
+        const code = (seedErr as { code?: number })?.code;
+        if (code !== 11000) {
+          console.warn('Initial products seed warning in POST /api/orders:', seedErr);
+        }
+      }
     }
 
     const validatedItems: Array<{
@@ -132,21 +139,24 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      // Atomically decrement stock only if sufficient stock exists
+      // Ensure legacy products without a numeric stock field are initialized to 10 once
+      await ProductModel.updateOne(
+        {
+          id: productId,
+          $or: [{ stock: { $exists: false } }, { stock: null }],
+        },
+        { $set: { stock: 10 } }
+      );
+
+      // Atomically decrement stock only if sufficient stock exists (standard update object, no pipeline array)
       const updatedProduct = await ProductModel.findOneAndUpdate(
         {
           id: productId,
-          $or: [{ stock: { $gte: quantity } }, { stock: { $exists: false } }],
+          stock: { $gte: quantity },
         },
-        [
-          {
-            $set: {
-              stock: {
-                $max: [0, { $subtract: [{ $ifNull: ['$stock', 10] }, quantity] }],
-              },
-            },
-          },
-        ],
+        {
+          $inc: { stock: -quantity },
+        },
         { new: true }
       );
 
@@ -183,10 +193,15 @@ export async function POST(req: NextRequest) {
       subtotal >= FREE_SHIPPING_THRESHOLD ? 0 : matchShippingFee(city, zones);
     const orderTotal = subtotal + shippingFee;
 
-    const requestedId =
+    let requestedId =
       typeof body?.id === 'string' && /^JM-EG-\d{6}$/.test(body.id)
         ? body.id
         : `JM-EG-${Math.floor(100000 + Math.random() * 900000)}`;
+
+    const existingOrderWithId = await OrderModel.exists({ id: requestedId });
+    if (existingOrderWithId) {
+      requestedId = `JM-EG-${Math.floor(100000 + Math.random() * 900000)}`;
+    }
 
     const userId = authUser?.userId || '';
     const customerEmail = (
