@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/auth';
 import { connectToDatabase } from '@/lib/mongodb';
 import ProductModel, { IProduct } from '@/models/Product';
-import { products as initialProducts } from '@/data/products';
 
 export const dynamic = 'force-dynamic';
 
@@ -78,20 +77,7 @@ function serializeProduct(doc: IProduct | RawProductLike) {
 export async function GET() {
   try {
     await connectToDatabase();
-    let docs = await ProductModel.find({}).sort({ createdAt: -1 });
-
-    if (!docs || docs.length === 0) {
-      try {
-        await ProductModel.insertMany(initialProducts, { ordered: false });
-      } catch (seedErr: unknown) {
-        const code = (seedErr as { code?: number })?.code;
-        if (code !== 11000) {
-          console.warn('Initial products seed warning in GET /api/products:', seedErr);
-        }
-      }
-      docs = await ProductModel.find({}).sort({ createdAt: -1 });
-    }
-
+    const docs = await ProductModel.find({}).sort({ createdAt: -1 });
     const products = docs.map(serializeProduct);
 
     return NextResponse.json(

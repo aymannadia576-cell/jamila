@@ -208,7 +208,8 @@ export async function DELETE(
   try {
     const { id } = await params;
     await connectToDatabase();
-    await ProductModel.findOneAndDelete({ id });
+    const query = /^[0-9a-fA-F]{24}$/.test(id) ? { $or: [{ id }, { _id: id }] } : { id };
+    await ProductModel.findOneAndDelete(query);
     return NextResponse.json({ success: true, message: 'تم حذف المنتج بنجاح' });
   } catch (error) {
     console.error('DELETE /api/products/[id] error:', error);

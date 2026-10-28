@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { Product, products as initialProducts } from '@/data/products';
+import { Product } from '@/data/products';
 
 export interface OrderItem {
   productId: string;
@@ -298,7 +298,7 @@ interface RawCustomerRecord {
 const AdminContext = createContext<AdminContextType | undefined>(undefined);
 
 export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [productsList, setProductsList] = useState<Product[]>(initialProducts);
+  const [productsList, setProductsList] = useState<Product[]>([]);
   const [ordersList, setOrdersList] = useState<Order[]>(initialOrders);
   const [customersList, setCustomersList] = useState<Customer[]>(initialCustomers);
   const [zonesList, setZonesList] = useState<ShippingZone[]>(initialZones);

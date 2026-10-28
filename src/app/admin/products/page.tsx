@@ -260,9 +260,26 @@ export default function AdminProductsPage() {
     }
   };
 
-  const handleDelete = (id: string, name: string) => {
+  const handleDelete = async (id: string, name: string) => {
     if (confirm(`هل أنتِ متأكدة من رغبتكِ في حذف المنتج "${name}"؟`)) {
-      deleteProduct(id);
+      await deleteProduct(id);
+    }
+  };
+
+  const handleDeleteDemoProducts = async () => {
+    const demoIds = productsList
+      .filter((p) => /^jm-0[1-6]$/.test(p.id))
+      .map((p) => p.id);
+    if (demoIds.length === 0) return;
+
+    if (
+      confirm(
+        `هل أنتِ متأكدة من رغبتكِ في حذف كافة المنتجات التجريبية الافتراضية (${demoIds.length} منتجات) نهائياً من قاعدة البيانات والمتجر؟`
+      )
+    ) {
+      for (const id of demoIds) {
+        await deleteProduct(id);
+      }
     }
   };
 
@@ -286,13 +303,26 @@ export default function AdminProductsPage() {
           </p>
         </div>
 
-        <button
-          onClick={handleOpenAdd}
-          className="flex items-center justify-center gap-1.5 px-4 py-2.5 bg-[#5c3d2e] hover:bg-[#3d2a1f] text-[#f8f2e7] text-xs font-semibold rounded-xs transition-colors shadow-2xs cursor-pointer"
-        >
-          <Plus size={16} />
-          <span>إضافة منتج جديد</span>
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          {productsList.some((p) => /^jm-0[1-6]$/.test(p.id)) && (
+            <button
+              onClick={handleDeleteDemoProducts}
+              className="flex items-center justify-center gap-1.5 px-3 py-2 bg-red-100 hover:bg-red-200 text-red-900 border border-red-300 text-xs font-semibold rounded-xs transition-colors shadow-2xs cursor-pointer"
+              title="حذف المنتجات التجريبية الافتراضية القديمة دفعة واحدة"
+            >
+              <Trash2 size={14} />
+              <span>حذف المنتجات التجريبية القديمة</span>
+            </button>
+          )}
+
+          <button
+            onClick={handleOpenAdd}
+            className="flex items-center justify-center gap-1.5 px-4 py-2.5 bg-[#5c3d2e] hover:bg-[#3d2a1f] text-[#f8f2e7] text-xs font-semibold rounded-xs transition-colors shadow-2xs cursor-pointer"
+          >
+            <Plus size={16} />
+            <span>إضافة منتج جديد</span>
+          </button>
+        </div>
       </div>
 
       {/* Filter & Search Bar */}
@@ -329,7 +359,25 @@ export default function AdminProductsPage() {
       </div>
 
       {/* Products Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+      {filteredProducts.length === 0 ? (
+        <div className="bg-[#fcfaf5] border border-[rgba(92,61,46,0.18)] p-12 text-center rounded-xs">
+          <Package size={36} className="mx-auto text-[#8a6b57]/60 mb-3" />
+          <h3 className="text-base font-amiri font-bold text-[#5c3d2e] mb-1">
+            لا توجد أي منتجات حالياً
+          </h3>
+          <p className="text-xs text-[#8a6b57] mb-4">
+            يمكنكِ إضافة أول منتج عبر الضغط على &quot;إضافة تصميم جديد&quot; أعلاه.
+          </p>
+          <button
+            onClick={handleOpenAdd}
+            className="px-5 py-2 bg-[#5c3d2e] text-[#f8f2e7] text-xs font-semibold rounded-xs hover:bg-[#3d2a1f] cursor-pointer inline-flex items-center gap-1.5"
+          >
+            <Plus size={14} />
+            <span>إضافة تصميم جديد</span>
+          </button>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
         {filteredProducts.map((product) => {
           const prodGallery = Array.from(
             new Set([product.image, ...(product.gallery || [])].filter(Boolean))
@@ -443,6 +491,7 @@ export default function AdminProductsPage() {
           );
         })}
       </div>
+      )}
 
       {/* Add / Edit Modal */}
       {isAddModalOpen && (

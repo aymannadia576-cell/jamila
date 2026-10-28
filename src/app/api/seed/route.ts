@@ -2,11 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import { requireAdmin } from '@/lib/auth';
 import { connectToDatabase } from '@/lib/mongodb';
-import ProductModel from '@/models/Product';
 import UserModel from '@/models/User';
 import SettingModel from '@/models/Setting';
 import ZoneModel from '@/models/Zone';
-import { products as initialProducts } from '@/data/products';
 
 function isAuthorizedSeedRequest(req: NextRequest): boolean {
   const seedSecret = process.env.SEED_SECRET?.trim();
@@ -54,13 +52,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 2. Seed Products if empty
-    const productCount = await ProductModel.countDocuments();
-    if (productCount === 0) {
-      await ProductModel.insertMany(initialProducts);
-    }
-
-    // 3. Seed Shipping Zones if empty
+    // 2. Seed Shipping Zones if empty
     const zoneCount = await ZoneModel.countDocuments();
     if (zoneCount === 0) {
       await ZoneModel.insertMany([

@@ -53,11 +53,19 @@ export const FeaturedProductsSection: React.FC = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        {filteredProducts.map((product) => (
-          <ProductCard key={product.id} product={product} />
-        ))}
-      </div>
+      {filteredProducts.length === 0 ? (
+        <div className="text-center py-12 bg-[#fcfaf5] border border-[rgba(92,61,46,0.14)] p-8 my-6">
+          <p className="text-xs text-[#8a6b57] font-cairo">
+            لا توجد تصاميم معروضة حالياً في هذا القسم. سيتم إضافة تشكيلات جديدة قريباً.
+          </p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          {filteredProducts.map((product) => (
+            <ProductCard key={product.id} product={product} />
+          ))}
+        </div>
+      )}
 
       <div className="mt-14 text-center">
         <Link

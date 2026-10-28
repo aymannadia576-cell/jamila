@@ -5,7 +5,6 @@ import OrderModel from '@/models/Order';
 import UserModel from '@/models/User';
 import ProductModel from '@/models/Product';
 import ZoneModel, { IZone } from '@/models/Zone';
-import { products as initialProducts } from '@/data/products';
 
 export const dynamic = 'force-dynamic';
 
@@ -95,19 +94,6 @@ export async function POST(req: NextRequest) {
         { success: false, message: 'حقيبة التسوق فارغة أو غير صالحة' },
         { status: 400 }
       );
-    }
-
-    // Ensure products collection is seeded if empty
-    const prodCount = await ProductModel.countDocuments();
-    if (prodCount === 0) {
-      try {
-        await ProductModel.insertMany(initialProducts, { ordered: false });
-      } catch (seedErr: unknown) {
-        const code = (seedErr as { code?: number })?.code;
-        if (code !== 11000) {
-          console.warn('Initial products seed warning in POST /api/orders:', seedErr);
-        }
-      }
     }
 
     const validatedItems: Array<{

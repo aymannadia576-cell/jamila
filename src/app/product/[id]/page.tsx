@@ -20,21 +20,21 @@ export default function ProductDetailPage() {
   const { products, addToCart, toggleWishlist, isInWishlist } = useShop();
 
   const productId = params?.id as string;
-  const product = products.find((p) => p.id === productId) || products[0];
+  const product = products.find((p) => p.id === productId);
 
   const [selectedSize, setSelectedSize] = useState<string>('M');
   const [selectedImage, setSelectedImage] = useState<string>('');
   const [quantity, setQuantity] = useState<number>(1);
   const [isAdded, setIsAdded] = useState(false);
 
-  const isFavorited = isInWishlist(product.id);
-  const isSoldOut = typeof product.stock === 'number' && product.stock <= 0;
+  const isFavorited = Boolean(product && isInWishlist(product.id));
+  const isSoldOut = Boolean(product && typeof product.stock === 'number' && product.stock <= 0);
   const maxAvailable =
-    typeof product.stock === 'number' && product.stock > 0 ? product.stock : 10;
-  const productSizes = product.sizes?.length ? product.sizes : ['S', 'M', 'L', 'XL', '2XL', '3XL'];
-  const galleryImages = Array.from(
-    new Set([product.image, ...(product.gallery || [])].filter(Boolean))
-  );
+    product && typeof product.stock === 'number' && product.stock > 0 ? product.stock : 10;
+  const productSizes = product?.sizes?.length ? product.sizes : ['S', 'M', 'L', 'XL', '2XL', '3XL'];
+  const galleryImages = product
+    ? Array.from(new Set([product.image, ...(product.gallery || [])].filter(Boolean)))
+    : [];
 
   const activeSelectedSize = productSizes.includes(selectedSize)
     ? selectedSize
@@ -42,18 +42,40 @@ export default function ProductDetailPage() {
   const activeSelectedImage =
     selectedImage && galleryImages.includes(selectedImage)
       ? selectedImage
-      : product.image || '/products/product-1.png';
+      : product?.image || '/products/product-1.png';
   const activeGalleryIdx = Math.max(0, galleryImages.indexOf(activeSelectedImage));
 
   const handleAddToCart = () => {
+    if (!product) return;
     addToCart(product, activeSelectedSize, quantity);
     setIsAdded(true);
     setTimeout(() => setIsAdded(false), 2000);
   };
 
-  const relatedProducts = products
-    .filter((p) => p.id !== product.id && p.category === product.category)
-    .slice(0, 4);
+  const relatedProducts = product
+    ? products
+        .filter((p) => p.id !== product.id && p.category === product.category)
+        .slice(0, 4)
+    : [];
+
+  if (!product) {
+    return (
+      <div className="py-24 text-center font-cairo max-w-md mx-auto px-4">
+        <h2 className="text-xl font-amiri font-bold text-[#5c3d2e] mb-2">
+          القطعة غير متوفرة أو تم حذفها
+        </h2>
+        <p className="text-xs text-[#8a6b57] mb-6">
+          لم يتم العثور على هذا التصميم في متجر دار جميلة.
+        </p>
+        <Link
+          href="/shop"
+          className="inline-block px-6 py-2.5 bg-[#5c3d2e] text-[#f8f2e7] text-xs font-semibold rounded-xs hover:bg-[#3d2a1f] transition-colors"
+        >
+          تصفح المتجر
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <div className="py-8 sm:py-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto font-cairo">
