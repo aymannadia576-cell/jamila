@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useShop, FREE_SHIPPING_THRESHOLD } from '@/context/ShopContext';
 import { GarmentSketch } from '@/components/svg/GarmentSketches';
 import { Star8Point, CornerOrnament } from '@/components/svg/Ornaments';
-import { ShieldCheck, CheckCircle2, Truck, CreditCard, Lock, Clock } from 'lucide-react';
+import { ShieldCheck, CheckCircle2, Truck, Banknote, Lock, Clock } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
 export default function CheckoutPage() {
@@ -335,35 +335,25 @@ export default function CheckoutPage() {
           </div>
 
           <h2 className="text-base font-amiri font-bold text-[#5c3d2e] border-t border-[rgba(92,61,46,0.1)] pt-3 pb-1.5 flex items-center gap-2">
-            <CreditCard size={15} />
-            <span>طريقة الدفع في مصر</span>
+            <Banknote size={15} />
+            <span>طريقة الدفع</span>
           </h2>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-            {[
-              { id: 'cod', label: 'الدفع عند الاستلام (COD)' },
-              { id: 'visa', label: 'فيزا / ماستركارد' },
-              { id: 'instapay', label: 'InstaPay / فودافون كاش' },
-            ].map((method) => (
-              <label
-                key={method.id}
-                className={`p-2.5 border text-center cursor-pointer font-medium transition-all ${
-                  formData.paymentMethod === method.id
-                    ? 'bg-[#5c3d2e] text-[#f8f2e7] border-[#5c3d2e]'
-                    : 'bg-[#f8f2e7] text-[#3d2a1f] border-[rgba(92,61,46,0.2)] hover:border-[#5c3d2e]'
-                }`}
-              >
+          <div>
+            <div className="p-3 bg-[#f8f2e7] border border-[#5c3d2e] flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
                 <input
                   type="radio"
                   name="paymentMethod"
-                  value={method.id}
-                  checked={formData.paymentMethod === method.id}
-                  onChange={(e) => setFormData({ ...formData, paymentMethod: e.target.value })}
-                  className="sr-only"
+                  value="cod"
+                  checked={true}
+                  readOnly
+                  className="accent-[#5c3d2e]"
                 />
-                <span className="text-[11px]">{method.label}</span>
-              </label>
-            ))}
+                <span className="text-xs font-semibold text-[#5c3d2e]">الدفع عند الاستلام (كاش)</span>
+              </div>
+              <span className="text-[10px] text-[#8a6b57]">متاح لكافة المحافظات</span>
+            </div>
           </div>
         </div>
 

@@ -39,14 +39,6 @@ export const HeroSection: React.FC = () => {
               <span>الأكثر مبيعًا</span>
             </Link>
           </div>
-
-          <div className="mt-8 sm:mt-10 flex items-center justify-center gap-3 text-[9px] sm:text-[10px] tracking-[0.18em] font-cairo text-[#8a6b57]">
-            <span>حرير طبيعي ١٠٠٪</span>
-            <span>✦</span>
-            <span>حياكة يدوية متقنة</span>
-            <span>✦</span>
-            <span>إصدارات محدودة</span>
-          </div>
         </MihrabArchFrame>
       </div>
 

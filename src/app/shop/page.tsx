@@ -65,10 +65,6 @@ function ShopInner({ initialCategory, initialQuery, tagParam }: ShopInnerProps) 
             ? 'التصاميم الأكثر مبيعًا وطلباً'
             : `مجموعة ${selectedCategory} الراقية`}
         </h1>
-
-        <p className="text-xs text-[#8a6b57] max-w-lg mx-auto">
-          استكشفي أحدث إبداعات الهوت كوتور للعباءات والسدالات العربية، منفذة بأقمشة طبيعية وخياطة يدوية دقيقة.
-        </p>
       </div>
 
       <div className="bg-[#fcfaf5] border border-[rgba(92,61,46,0.14)] p-3.5 sm:p-4 mb-8 flex flex-col md:flex-row items-center justify-between gap-3">

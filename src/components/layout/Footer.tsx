@@ -50,12 +50,12 @@ export const Footer: React.FC = () => {
             <ul className="space-y-2 text-[#f8f2e7]/85 text-[11px]">
               <li>
                 <Link href="/shop?category=عبايات" className="hover:text-[#f8f2e7] transition-colors">
-                  عبايات الهوت كوتور
+                  عبايات
                 </Link>
               </li>
               <li>
                 <Link href="/shop?category=إسدالات" className="hover:text-[#f8f2e7] transition-colors">
-                  إسدالات الصلاة الفاخرة
+                  إسدالات
                 </Link>
               </li>
               <li>
