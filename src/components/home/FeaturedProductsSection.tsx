@@ -4,7 +4,6 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { useShop } from '@/context/ShopContext';
 import { ProductCard } from '@/components/common/ProductCard';
-import { StarDivider } from '@/components/svg/Ornaments';
 import { ArrowLeft } from 'lucide-react';
 
 export const FeaturedProductsSection: React.FC = () => {
@@ -25,9 +24,7 @@ export const FeaturedProductsSection: React.FC = () => {
   ];
 
   return (
-    <section className="py-16 md:py-24 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
-      <StarDivider label="مختارات الهوت كوتور" />
-
+    <section id="featured" className="py-12 md:py-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
       <div className="text-center max-w-2xl mx-auto mb-10">
         <h2 className="text-2xl sm:text-3xl md:text-4xl font-amiri font-bold text-[#5c3d2e] mb-3">
           تصاميم مرسومة بروح الأصالة العربية

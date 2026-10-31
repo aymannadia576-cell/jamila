@@ -43,9 +43,9 @@ export const HeroSection: React.FC = () => {
       </div>
 
       <a
-        href="#categories"
+        href="#featured"
         className="relative z-10 mt-2 sm:mt-4 flex flex-col items-center gap-1 text-[#8a6b57] hover:text-[#5c3d2e] transition-colors"
-        aria-label="الانتقال إلى الأقسام"
+        aria-label="الانتقال إلى التشكيلة"
       >
         <span className="text-[9px] font-cairo uppercase tracking-widest">
           استكشاف
